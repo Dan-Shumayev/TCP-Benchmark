@@ -34,11 +34,6 @@ int main()
     }
 
     // connected to the server...
-    if (set_sockfd_opts(sockfd))
-    {
-        exit(EXIT_FAILURE);
-    }
-    
     apply_benchmark(sockfd); // TODO - benchmark stuff
 
     close(sockfd);

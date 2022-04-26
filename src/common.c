@@ -16,6 +16,8 @@ int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_addre
     servaddr->sin_addr.s_addr = sock_address;
     servaddr->sin_port = htons(sock_port);
 
+    set_sockfd_opts(*sockfd);
+
     return EXIT_SUCCESS;
 }
 
