@@ -59,6 +59,12 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    // Server is listening...
+    if (set_sockfd_opts(sockfd))
+    {
+        exit(EXIT_FAILURE);
+    }
+
     recv_send_msgs(connfd); // TODO benchmark
 
     close(sockfd);

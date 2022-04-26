@@ -18,3 +18,26 @@ int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_addre
 
     return EXIT_SUCCESS;
 }
+
+int set_sockfd_opts(int sockfd)
+{
+    // Turn on the Non-Blocking bit of the socket file descriptors's flags
+    // such that read() and write() operations would never block
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        perror("fcntl() failed with error no.:\n");
+        return EXIT_FAILURE;
+    }
+
+    int flag = 1;
+
+    // Disable the Nagle's algorithm executing under the TCP protcol, such that each sent
+    // data is immediately gets on the wire without further ado
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&flag, sizeof(int)) == -1)
+    {
+        perror("setsockopt() failed with error no.:\n");
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
