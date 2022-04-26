@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 
 # Created by https://www.toptal.com/developers/gitignore/api/c,rust,cmake,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,rust,cmake,linux
 
 ### C ###
+=======
+>>>>>>> 1071d2c522c60fd64c1cb07e5d31342e1f2eb60d
 # Prerequisites
 *.d
 
@@ -55,6 +58,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+<<<<<<< HEAD
 
 ### CMake ###
 CMakeLists.txt.user
@@ -106,3 +110,5 @@ Cargo.lock
 #C-TCP-Latency-Benchmark-Reference/
 #Rust-TCP-Bandwidth-Benchmark-Reference/
 # End of https://www.toptal.com/developers/gitignore/api/c,rust,cmake,linux
+=======
+>>>>>>> 1071d2c522c60fd64c1cb07e5d31342e1f2eb60d
