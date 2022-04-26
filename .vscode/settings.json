@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "time.h": "c",
+        "clock_t.h": "c",
+        "types.h": "c",
+        "socket.h": "c",
+        "type_traits": "c"
+    }
+    
+}
