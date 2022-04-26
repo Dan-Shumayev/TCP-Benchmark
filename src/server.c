@@ -1,106 +1,67 @@
 #include <stdio.h>     // printf, perror
 #include <stdlib.h>    // EXIT_FAILURE, exit
-#include <string.h>    // bzero, strncmp
+#include <string.h>    // memset, strncmp
 #include <unistd.h>    // write, read, close
 #include <arpa/inet.h> // connect, socket, htonl, htons, network MACROS
-
-#define MAX 80
-#define PORT 8080
-#define SA struct sockaddr
+#include "common.h"    // socket_setup
 
 // Function designed for chat between client and server.
-void func(int connfd)
+void recv_send_msgs(int connfd)
 {
-    char buff[MAX];
-    int n;
-    // infinite loop for chat
-    for (;;)
-    {
-        bzero(buff, MAX);
-        // read the message from client and copy it in buffer
-        read(connfd, buff, sizeof(buff));
-        // print buffer which contains the client contents
-        printf("From client: %s\t To client : ", buff);
-        bzero(buff, MAX);
-        n = 0;
-        // copy server message in the buffer
-        while ((buff[n++] = getchar()) != '\n')
-            ;
-
-        // and send that buffer to client
-        write(connfd, buff, sizeof(buff));
-
-        // if msg contains "Exit" then server exit and chat ended.
-        if (strncmp("exit", buff, 4) == 0)
-        {
-            printf("Server Exit...\n");
-            break;
-        }
-    }
+    (void)connfd;
 }
 
-int main()
+int bind_listen_accept(int sockfd, struct sockaddr_in *servaddr,
+                       socklen_t *client_addr_len, int *connfd, struct sockaddr_in *cli)
 {
-    int sockfd, connfd;
-    socklen_t client_addr_len;
-    struct sockaddr_in servaddr, cli;
-
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-    {
-        perror("socket() failed with error no.:n");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        printf("Socket successfully created...\n");
-    }
-
-    bzero(&servaddr, sizeof(servaddr)); // Clean up the socket address's space
-    // Set the socket fields up
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); /* TODO - Listen only to local address connections
-                                                        To be changed upon receiving school machines */
-    servaddr.sin_port = htons(PORT);
-
     // Binding newly created socket to given IP
-    if ((bind(sockfd, (const SA *)&servaddr, sizeof(servaddr))) != EXIT_SUCCESS)
+    if ((bind(sockfd, (const SA *)&(*servaddr), sizeof((*servaddr)))) != EXIT_SUCCESS)
     {
         printf("socket bind failed...\n");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        printf("Socket successfully binded..\n");
+        return EXIT_FAILURE;
     }
 
     // Now server is ready to listen to a single client
     if ((listen(sockfd, 0)) != EXIT_SUCCESS)
     {
         perror("listen() failed with error no.:\n");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        printf("Server listening...\n");
+        return EXIT_FAILURE;
     }
 
-    client_addr_len = sizeof(cli);
+    *client_addr_len = sizeof((*cli));
     // Accept the data packet from a client
-    connfd = accept(sockfd, (SA *)&cli, &client_addr_len);
-    if (connfd < 0)
+    *connfd = accept(sockfd, (SA *)cli, client_addr_len);
+    if (*connfd < 0)
     {
         perror("accept() failed with error no.:\n");
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int main()
+{
+    const uint16_t port = 8080;
+
+    int sockfd, connfd;
+    socklen_t client_addr_len;
+    struct sockaddr_in servaddr, cli;
+
+    if (socket_setup(&sockfd, &servaddr, htonl(INADDR_LOOPBACK), port))
+    {
         exit(EXIT_FAILURE);
     }
-    else
+
+    if (bind_listen_accept(sockfd, &servaddr, &client_addr_len, &connfd, &cli))
     {
-        printf("server accept the client...\n");
+        close(sockfd);
+        exit(EXIT_FAILURE);
     }
 
-    func(connfd); // TODO benchmark stuff?
+    recv_send_msgs(connfd); // TODO benchmark
 
     close(sockfd);
+
     return EXIT_SUCCESS;
 }
