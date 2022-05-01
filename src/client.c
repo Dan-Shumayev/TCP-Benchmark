@@ -10,16 +10,13 @@
 void apply_benchmark(int sockfd)
 {
     // Timed send-receive loop
-    uint64_t *times_send = malloc(sizeof(uint64_t) * 31);
-    uint64_t *times_recv = malloc(sizeof(uint64_t) * 31);
-
     for (size_t j = 0; j < 31; j++)
     {
         // Init buffers
         uint64_t num_of_bytes_to_send = 1 << j;
         uint8_t *rbuffer = malloc(num_of_bytes_to_send);
         uint8_t *wbuffer = malloc(num_of_bytes_to_send);
-        uint64_t tsend, tstart;
+        clock_t tsend, tstart;
 
         tstart = clock();
         for (size_t i = 0; i < N_ROUNDS; i++)
@@ -29,24 +26,25 @@ void apply_benchmark(int sockfd)
         tsend = clock();
         receive_message(1, sockfd, rbuffer);
 
-        uint64_t tend = clock();
-        times_send[j] = tsend - tstart;
-        times_recv[j] = tend - tsend;
+        clock_t send_time = (tsend - tstart) / CLOCKS_PER_SEC;
+        clock_t throughput = (N_ROUNDS * num_of_bytes_to_send) / send_time;
 
-        printf("%lu, %lu\n", times_send[j], times_recv[j]);
+        printf("%lu\t%lu\tSeconds\n", num_of_bytes_to_send, throughput);
+
+        free(rbuffer);
+        free(wbuffer);
     }
 }
 
 int main()
 {
-    const uint16_t port = 8080;
     const char *server_host = "127.0.0.1";
 
     int sockfd;
     struct sockaddr_in servaddr;
 
     // set client's socket up
-    if (socket_setup(&sockfd, &servaddr, inet_addr(server_host), port))
+    if (socket_setup(&sockfd, &servaddr, inet_addr(server_host), PORT))
     {
         exit(EXIT_FAILURE);
     }
@@ -63,7 +61,7 @@ int main()
     // connected to the server...
     set_sockfd_opts(sockfd);
 
-    apply_benchmark(sockfd); // TODO - benchmark stuff
+    apply_benchmark(sockfd);
 
     close(sockfd);
     return EXIT_SUCCESS;
