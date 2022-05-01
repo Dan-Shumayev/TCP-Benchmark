@@ -28,14 +28,14 @@ int bind_listen_accept(int sockfd, struct sockaddr_in *servaddr,
                        socklen_t *client_addr_len, int *connfd, struct sockaddr_in *cli)
 {
     // Binding newly created socket to given IP
-    if ((bind(sockfd, (const SA *)servaddr, sizeof((*servaddr)))) != EXIT_SUCCESS)
+    if (bind(sockfd, (const SA *)servaddr, sizeof((*servaddr))))
     {
-        printf("socket bind failed...\n");
+        perror("bind() failed");
         return EXIT_FAILURE;
     }
 
     // Now server is ready to listen to a single client
-    if ((listen(sockfd, 0)) != EXIT_SUCCESS)
+    if (listen(sockfd, 0))
     {
         perror("listen() failed with error no.:\n");
         return EXIT_FAILURE;
@@ -55,13 +55,11 @@ int bind_listen_accept(int sockfd, struct sockaddr_in *servaddr,
 
 int main()
 {
-    const uint16_t port = 8080;
-
     int sockfd, connfd;
     socklen_t client_addr_len;
     struct sockaddr_in servaddr, cli;
 
-    if (socket_setup(&sockfd, &servaddr, htonl(INADDR_LOOPBACK), port))
+    if (socket_setup(&sockfd, &servaddr, htonl(INADDR_LOOPBACK), PORT))
     {
         exit(EXIT_FAILURE);
     }

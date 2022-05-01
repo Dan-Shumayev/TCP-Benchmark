@@ -51,6 +51,7 @@ int receive_message(size_t n_bytes, int sockfd, uint8_t *buffer)
 {
     size_t bytes_read = 0;
     int r;
+
     while (bytes_read < n_bytes)
     {
         // Make sure we read exactly n_bytes
@@ -60,11 +61,13 @@ int receive_message(size_t n_bytes, int sockfd, uint8_t *buffer)
             perror("read() failed with error no.:\n");
             exit(EXIT_FAILURE);
         }
+
         if (r > 0)
         {
             bytes_read += r;
         }
     }
+
     return bytes_read;
 }
 
@@ -73,19 +76,23 @@ int send_message(size_t n_bytes, int sockfd, uint8_t *buffer)
 {
     size_t bytes_sent = 0;
     int r;
+
     while (bytes_sent < n_bytes)
     {
         // Make sure we write exactly n_bytes
         r = write(sockfd, buffer, n_bytes - bytes_sent);
+
         if (r < 0 && !(errno == EAGAIN || errno == EWOULDBLOCK))
         {
-            perror("write() failed with error no.:\n");
+            perror("write() failed:");
             exit(EXIT_FAILURE);
         }
+
         if (r > 0)
         {
             bytes_sent += r;
         }
     }
+
     return bytes_sent;
 }

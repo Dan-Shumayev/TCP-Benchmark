@@ -12,7 +12,9 @@
 #include <netinet/tcp.h> // TCP_NODELAY
 
 #define SA struct sockaddr
-#define N_ROUNDS 1000000
+#define N_ROUNDS 100000
+
+#define PORT 25463
 
 /** Setting up a new socket */
 int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_address,
