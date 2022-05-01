@@ -8,14 +8,27 @@
 // Function designed for chat between client and server.
 void recv_send_msgs(int connfd)
 {
-    (void)connfd;
+
+    for (size_t j = 0; j < 31; j++)
+    {
+        uint64_t num_of_bytes_to_send = 1 << j;
+        uint8_t *buffer = malloc(num_of_bytes_to_send);
+
+        for (size_t i = 0; i < N_ROUNDS; i++)
+        {
+            receive_message(num_of_bytes_to_send, connfd, buffer);
+        }
+        send_message(1, connfd, buffer);
+
+        free(buffer);
+    }
 }
 
 int bind_listen_accept(int sockfd, struct sockaddr_in *servaddr,
                        socklen_t *client_addr_len, int *connfd, struct sockaddr_in *cli)
 {
     // Binding newly created socket to given IP
-    if ((bind(sockfd, (const SA *)&(*servaddr), sizeof((*servaddr)))) != EXIT_SUCCESS)
+    if ((bind(sockfd, (const SA *)servaddr, sizeof((*servaddr)))) != EXIT_SUCCESS)
     {
         printf("socket bind failed...\n");
         return EXIT_FAILURE;
@@ -60,6 +73,8 @@ int main()
     }
 
     // Server is listening...
+    set_sockfd_opts(sockfd);
+
     recv_send_msgs(connfd); // TODO benchmark
 
     close(sockfd);
