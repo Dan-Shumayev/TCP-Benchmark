@@ -1,4 +1,8 @@
 #include "common.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 
 int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_address, in_port_t sock_port)
 {
@@ -15,8 +19,6 @@ int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_addre
     servaddr->sin_family = AF_INET;
     servaddr->sin_addr.s_addr = sock_address;
     servaddr->sin_port = htons(sock_port);
-
-    set_sockfd_opts(*sockfd);
 
     return EXIT_SUCCESS;
 }
@@ -42,4 +44,48 @@ int set_sockfd_opts(int sockfd)
     }
 
     return EXIT_SUCCESS;
+}
+
+// Reads from the given socket into the given buffer n_bytes bytes
+int receive_message(size_t n_bytes, int sockfd, uint8_t *buffer)
+{
+    size_t bytes_read = 0;
+    int r;
+    while (bytes_read < n_bytes)
+    {
+        // Make sure we read exactly n_bytes
+        r = read(sockfd, buffer, n_bytes - bytes_read);
+        if (r < 0 && !(errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            perror("read() failed with error no.:\n");
+            exit(EXIT_FAILURE);
+        }
+        if (r > 0)
+        {
+            bytes_read += r;
+        }
+    }
+    return bytes_read;
+}
+
+// Writes n_bytes from the given buffer to the given socekt
+int send_message(size_t n_bytes, int sockfd, uint8_t *buffer)
+{
+    size_t bytes_sent = 0;
+    int r;
+    while (bytes_sent < n_bytes)
+    {
+        // Make sure we write exactly n_bytes
+        r = write(sockfd, buffer, n_bytes - bytes_sent);
+        if (r < 0 && !(errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            perror("write() failed with error no.:\n");
+            exit(EXIT_FAILURE);
+        }
+        if (r > 0)
+        {
+            bytes_sent += r;
+        }
+    }
+    return bytes_sent;
 }

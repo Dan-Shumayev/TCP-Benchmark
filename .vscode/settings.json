@@ -4,7 +4,9 @@
         "clock_t.h": "c",
         "types.h": "c",
         "socket.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "unistd.h": "c",
+        "error_t.h": "c"
     }
     
 }
