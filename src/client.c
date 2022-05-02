@@ -26,10 +26,10 @@ void apply_benchmark(int sockfd)
         tsend = clock();
         receive_message(1, sockfd, rbuffer);
 
-        clock_t send_time = (tsend - tstart) / CLOCKS_PER_SEC;
-        clock_t throughput = (N_ROUNDS * num_of_bytes_to_send) / send_time;
+        double send_time = 1000.0 * (tsend - tstart) / CLOCKS_PER_SEC;
+        double throughput = (N_ROUNDS * num_of_bytes_to_send) / send_time;
 
-        printf("%lu\t%lu\tSeconds\n", num_of_bytes_to_send, throughput);
+        printf("%lu\t%f\tms\n", num_of_bytes_to_send, throughput);
 
         free(rbuffer);
         free(wbuffer);
