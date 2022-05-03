@@ -10,7 +10,7 @@
 void apply_benchmark(int sockfd)
 {
     // Timed send-receive loop
-    for (size_t j = 0; j < 31; j++)
+    for (size_t j = 0; j < NUM_OF_BITS; j++)
     {
         // Init buffers
         uint64_t num_of_bytes_to_send = 1 << j;
@@ -18,7 +18,7 @@ void apply_benchmark(int sockfd)
         uint8_t *wbuffer = malloc(num_of_bytes_to_send);
         clock_t tsend, tstart;
 
-        tstart = clock();
+        tstart = clock(); // TODO - Change to clock_gettime(CLOCK_MONOTONIC_RAW ...)
         for (size_t i = 0; i < N_ROUNDS; i++)
         {
             send_message(num_of_bytes_to_send, sockfd, wbuffer);

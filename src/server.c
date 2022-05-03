@@ -8,7 +8,7 @@
 // Function designed for chat between client and server.
 void recv_send_msgs(int connfd)
 {
-    for (size_t j = 0; j < 31; j++)
+    for (size_t j = 0; j < NUM_OF_BITS; j++)
     {
         uint64_t num_of_bytes_to_send = 1 << j;
         uint8_t *buffer = malloc(num_of_bytes_to_send);
