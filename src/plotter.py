@@ -2,10 +2,10 @@
 
 from subprocess import run as sp_run, CompletedProcess as sp_CompletedProcess 
 import csv
-
+from matplotlib import pyplot as plt
 
 CC = "gcc"
-FLAGS = ["-Wall", "-Wextra", "-Werror", "-std=c11"]
+
 LINKEDSRCS = ["common.c"]  # Add source files to be linked with your client if needed, 
                             # otherwise clear this list
 
@@ -18,7 +18,7 @@ def compile(filename: str) -> str:
 
     print(f"Creating binary: {binary_filename} From source file: {filename}\n")
 
-    sp_run([CC, *FLAGS, "-o", binary_filename, filename, *LINKEDSRCS]) # Compile
+    sp_run([CC, *LINKEDSRCS, "-o", binary_filename, filename]) # Compile
 
     return BINARY_DIR + binary_filename
 
@@ -37,8 +37,8 @@ if __name__ == "__main__":
 
     running_benchmark: sp_CompletedProcess = run_binary(binary_path)
 
-    print(f"Captured STDOUT: \n{running_benchmark.stdout}\n")
-    print(f"Captured STDERR: \n{running_benchmark.stderr}\n")
+    ##print(f"Captured STDOUT: \n{running_benchmark.stdout}\n")
+    ##print(f"Captured STDERR: \n{running_benchmark.stderr}\n")
 
     plots = csv.reader(running_benchmark.stdout.splitlines(), delimiter='\t')
 
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     y = []
 
     for row in plots:
+        print(row[0],row[1])
         x.append(row[0])
         y.append(row[1])
   
@@ -53,10 +54,10 @@ if __name__ == "__main__":
     fig.write_image("matplotlib.png")
     fig.show()
 
-    # plt.bar(x, y, color = 'g', width = 0.72, label = "Bytes/ms")
-    # plt.xlabel('Data size')
-    # plt.ylabel('Throughput')
-    # plt.title('Throughput as function of data size over TCP')
-    # plt.legend()
-    # plt.savefig("matplotlib.png")  #savefig, don't show
-    # plt.show()
+    plt.bar(x, y, color = 'g', width = 0.72, label = "Mbps")
+    plt.xlabel('Data size')
+    plt.ylabel('Throughput')
+    plt.title('Throughput as function of data size over TCP')
+    plt.legend()
+    plt.savefig("matplotlib.png")  #savefig, don't show
+    plt.show()

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>     
 
 int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_address, in_port_t sock_port)
 {

@@ -1,5 +1,0 @@
-*.idea
-*.lock
-target/
-*.pyc
-*__pycache__

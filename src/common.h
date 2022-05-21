@@ -10,11 +10,16 @@
 #include <sys/types.h>   // setsockopt
 #include <sys/socket.h>  // setsockopt
 #include <netinet/tcp.h> // TCP_NODELAY
+#include <time.h>      // clock, CLOCKS_PER_SEC
 
 #define SA struct sockaddr
-#define N_ROUNDS 100000
+#define N_ROUNDS 50
+#define NUM_OF_BITS 11
+#define BILLION 1000000000L
+#define TRANS_MBPS 125000
 
 #define PORT 25463
+
 
 /** Setting up a new socket */
 int socket_setup(int *sockfd, struct sockaddr_in *servaddr, in_addr_t sock_address,
