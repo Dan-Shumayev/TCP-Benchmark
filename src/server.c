@@ -72,7 +72,7 @@ int main()
     // Server is listening...
     set_sockfd_opts(sockfd);
 
-    recv_send_msgs(connfd); // TODO benchmark
+    recv_send_msgs(connfd);
 
     close(sockfd);
 

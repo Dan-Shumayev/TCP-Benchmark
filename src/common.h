@@ -13,6 +13,7 @@
 
 #define SA struct sockaddr
 #define N_ROUNDS 100000
+#define NUM_OF_BITS 10
 
 #define PORT 25463
 
