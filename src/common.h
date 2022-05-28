@@ -18,7 +18,8 @@
 #define BILLION 1000000000L
 #define TRANS_MBPS 125000
 
-#define PORT 25463
+#define PORT 8080
+#define MB 1048576
 
 
 /** Setting up a new socket */

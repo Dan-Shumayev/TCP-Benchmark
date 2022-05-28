@@ -1,11 +1,12 @@
-#include <stdio.h>     // printf, perror
-#include <stdlib.h>    // EXIT_FAILURE, exit
-#include <string.h>    // memset, strncmp
-#include <unistd.h>    // write, read, close
-#include <arpa/inet.h> // connect, socket, htonl, htons, network MACROS
-#include "common.h"    // socket_setup, MACROS
-#include <time.h>      // clock, CLOCKS_PER_SEC
-#include <inttypes.h>  // PRIu64
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <time.h>
+#include "common.h"
 
 
 
@@ -23,70 +24,79 @@ struct timespec diff(struct timespec start, struct timespec end)
     }
     return temp;
 }
-
-void apply_benchmark(int sockfd)
+// use ?
+void warm_up(int socket,uint64_t num_of_bytes_to_send)
 {
-    // Timed send-receive loop
-    for (size_t j = 0; j < NUM_OF_BITS; j++)
-    {
-        // Init buffers
-        uint64_t num_of_bytes_to_send = 1 << j;
-        uint8_t *rbuffer = malloc(num_of_bytes_to_send);
-        uint8_t *wbuffer = malloc(num_of_bytes_to_send);
-
-        struct timespec start, end, res;
-
-        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
-
-      
-        for (size_t i = 0; i < N_ROUNDS; i++)
-        {
-            send_message(num_of_bytes_to_send, sockfd, wbuffer);
-        }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-       
-        res = diff(start,end);
-        receive_message(1, sockfd, rbuffer);
-
-
-        double send_time = ((double) res.tv_sec + ((double) res.tv_nsec / BILLION)) ; // in second
-        double throughput =( (N_ROUNDS * num_of_bytes_to_send) / send_time) / TRANS_MBPS; // Mbps
-
-        printf("%lu\t%f\t Mbps\n",num_of_bytes_to_send, throughput);
-        
-    
-        free(rbuffer);
-        free(wbuffer);
-    }
+	uint8_t *tempBuffer = malloc(num_of_bytes_to_send);
+	for (int i = 0; i < N_ROUNDS; ++i)
+	{
+		send_message(socket, tempBuffer, num_of_bytes_to_send);
+	}
 }
 
-int main()
+void apply_benchmark(int socket)
 {
-    const char *server_host = "127.0.0.1";
+	for (size_t j = 0; j < NUM_OF_BITS; j++) {
+		uint64_t num_of_bytes_to_send = 1 << j;
+		uint8_t *rbuffer = malloc(num_of_bytes_to_send);
+		uint8_t *wbuffer = malloc(num_of_bytes_to_send);
 
-    int sockfd;
-    struct sockaddr_in servaddr;
+		struct timespec start, end ,res;
 
-    // set client's socket up
-    if (socket_setup(&sockfd, &servaddr, inet_addr(server_host), PORT))
-    {
-        exit(EXIT_FAILURE);
-    }
+		clock_gettime(CLOCK_REALTIME, &start);
+		for (size_t i = 0; i <  N_ROUNDS; i++) {
 
-    // connect the client socket to server socket
-    if (connect(sockfd, (const SA *)&servaddr, sizeof(servaddr)))
-    {
-        perror("connect() failed with error no:\n");
+			send_message(num_of_bytes_to_send, socket,wbuffer);
+		}
+		clock_gettime(CLOCK_REALTIME, &end);
+		res = diff(start,end);
+		double send_time = ((double) res.tv_sec + ((double) res.tv_nsec / BILLION));
+		double throughput = (((float) num_of_bytes_to_send / MB) * N_ROUNDS) / send_time;
+		
+		fprintf(stdout, "%lu\t%f\tMbps\n", num_of_bytes_to_send, throughput);
 
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-
-    // connected to the server...
-    set_sockfd_opts(sockfd);
-
-    apply_benchmark(sockfd);
-
-    close(sockfd);
-    return EXIT_SUCCESS;
+	}
 }
+
+
+int main(int argc, char const* argv[])
+{
+	int sock = 0;
+	struct sockaddr_in serv_addr;
+	struct addrinfo addrinfo;
+	addrinfo.ai_protocol = IPPROTO_TCP;
+	addrinfo.ai_family = AF_INET;
+	addrinfo.ai_socktype = SOCK_STREAM;
+	
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("\n Socket creation error \n");
+		return -1;
+	}
+
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(PORT);
+
+	// Convert IPv4 and IPv6 addresses from text to binary
+	// form
+	if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+		printf("\nInvalid address/ Address not supported \n");
+		return -1;
+	}
+
+	addrinfo.ai_addr = (struct sockaddr*)&serv_addr;
+
+	if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+		printf("\nConnection Failed \n");
+		return -1;
+	}
+
+	apply_benchmark(sock);
+
+	//endregion
+	
+}
+
+
+
+
