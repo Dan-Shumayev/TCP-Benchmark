@@ -1,75 +1,67 @@
-#include <stdio.h>  // printf, perror
-#include <stdlib.h> // EXIT_FAILURE, exit
-#include <string.h> // bzero, strncmp
-#include <unistd.h> // write, read, close
+#include <stdio.h>     // printf, perror
+#include <stdlib.h>    // EXIT_FAILURE, exit
+#include <string.h>    // memset, strncmp
+#include <unistd.h>    // write, read, close
 #include <arpa/inet.h> // connect, socket, htonl, htons, network MACROS
+#include "common.h"    // socket_setup, MACROS
+#include <time.h>      // clock, CLOCKS_PER_SEC
+#include <inttypes.h>  // PRIu64
 
-#define MAX 80
-#define SA struct sockaddr
-
-const uint16_t port = 8080;
-const char *sever_host = "127.0.0.1";
-
-void func(int sockfd)
+void apply_benchmark(int sockfd)
 {
-    char buff[MAX];
-    int n;
-    for (;;)
+    // Timed send-receive loop
+    for (size_t j = 0; j < NUM_OF_BITS; j++)
     {
-        bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
-        n = 0;
-        while ((buff[n++] = getchar()) != '\n')
-            ;
-        write(sockfd, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
-        read(sockfd, buff, sizeof(buff));
-        printf("From Server : %s", buff);
-        if ((strncmp(buff, "exit", 4)) == 0)
+        // Init buffers
+        uint64_t num_of_bytes_to_send = 1 << j;
+        uint8_t *rbuffer = malloc(num_of_bytes_to_send);
+        uint8_t *wbuffer = malloc(num_of_bytes_to_send);
+        clock_t tsend, tstart;
+
+        tstart = clock(); // TODO - Change to clock_gettime(CLOCK_MONOTONIC_RAW ...)
+        for (size_t i = 0; i < N_ROUNDS; i++)
         {
-            printf("Client Exit...\n");
-            return;
+            send_message(num_of_bytes_to_send, sockfd, wbuffer);
         }
+        tsend = clock();
+        receive_message(1, sockfd, rbuffer);
+
+        double send_time = 1000.0 * (tsend - tstart) / CLOCKS_PER_SEC;
+        double throughput = (N_ROUNDS * num_of_bytes_to_send) / send_time;
+
+        printf("%lu\t%f\tms\n", num_of_bytes_to_send, throughput);
+
+        free(rbuffer);
+        free(wbuffer);
     }
 }
 
 int main()
 {
+    const char *server_host = "127.0.0.1";
+
     int sockfd;
     struct sockaddr_in servaddr;
 
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
+    // set client's socket up
+    if (socket_setup(&sockfd, &servaddr, inet_addr(server_host), PORT))
     {
-        perror("socket() failed with error no:\n");
         exit(EXIT_FAILURE);
     }
-    else
-    {
-        printf("Socket successfully created...\n");
-    }
-
-    bzero(&servaddr, sizeof(servaddr)); // Clean up the socket address's space
-    // Set the socket fields up
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(sever_host);
-    servaddr.sin_port = htons(port);
 
     // connect the client socket to server socket
-    if (connect(sockfd, (const SA *)&servaddr, sizeof(servaddr)) != EXIT_SUCCESS)
+    if (connect(sockfd, (const SA *)&servaddr, sizeof(servaddr)))
     {
         perror("connect() failed with error no:\n");
 
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-    else
-    {
-        printf("connected to the server...\n");
-    }
 
-    func(sockfd); // TODO - benchmark?
+    // connected to the server...
+    set_sockfd_opts(sockfd);
+
+    apply_benchmark(sockfd);
 
     close(sockfd);
     return EXIT_SUCCESS;
