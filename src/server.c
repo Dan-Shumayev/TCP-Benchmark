@@ -1,80 +1,130 @@
-#include <stdio.h>     // printf, perror
-#include <stdlib.h>    // EXIT_FAILURE, exit
-#include <string.h>    // memset, strncmp
-#include <unistd.h>    // write, read, close
-#include <arpa/inet.h> // connect, socket, htonl, htons, network MACROS
-#include "common.h"    // socket_setup
+#include <stdio.h>
+#include<sys/time.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include "common.h"
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
 
-// Function designed for chat between client and server.
-void recv_send_msgs(int connfd)
-{
-    for (size_t j = 0; j < NUM_OF_BITS; j++)
+
+
+size_t recive_data(int sockfd, char *buffer, int size) {
+    size_t bytes_received = 0;
+    size_t result = 0;
+    while (bytes_received < size)
     {
-        uint64_t num_of_bytes_to_send = 1 << j;
-        uint8_t *buffer = malloc(num_of_bytes_to_send);
-
-        for (size_t i = 0; i < N_ROUNDS; i++)
+        result = recv(sockfd, buffer + bytes_received, size - bytes_received, 0);
+        if (result == 0)
         {
-            receive_message(num_of_bytes_to_send, connfd, buffer);
+            printf("Error: recive_data\n");
         }
-        send_message(1, connfd, buffer);
-
-        free(buffer);
+        else if (result < 0)
+        {
+            // socket was closed on remote end or hit an error
+            // either way, the socket is likely dead
+            return result;
+        }
+        else
+        {
+            bytes_received += result;
+        }
     }
+
+    return result;
 }
 
-int bind_listen_accept(int sockfd, struct sockaddr_in *servaddr,
-                       socklen_t *client_addr_len, int *connfd, struct sockaddr_in *cli)
+int connectS()
 {
-    // Binding newly created socket to given IP
-    if (bind(sockfd, (const SA *)servaddr, sizeof((*servaddr))))
-    {
-        perror("bind() failed");
-        return EXIT_FAILURE;
-    }
+	int socket_desc, client_sock, c;
+	struct sockaddr_in server, client;
 
-    // Now server is ready to listen to a single client
-    if (listen(sockfd, 0))
-    {
-        perror("listen() failed with error no.:\n");
-        return EXIT_FAILURE;
-    }
 
-    *client_addr_len = sizeof((*cli));
-    // Accept the data packet from a client
-    *connfd = accept(sockfd, (SA *)cli, client_addr_len);
-    if (*connfd < 0)
-    {
-        perror("accept() failed with error no.:\n");
-        return EXIT_FAILURE;
-    }
+	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+	if (socket_desc == -1)
+	{
+		printf("Error: socket\n");
+		return EXIT_FAILURE;
+	}
 
-    return EXIT_SUCCESS;
+
+	//Prepare the sockaddr_in structure
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons(PORT);
+
+	// Bind
+	if (bind(socket_desc, (struct sockaddr *) &server, sizeof(server)) < 0)
+	{
+		printf("Error: bind");
+		return EXIT_FAILURE;
+	}
+
+	listen(socket_desc, 3);
+
+
+	printf("Waiting for connection . . .\n");
+
+	c = sizeof(struct sockaddr_in);
+
+	client_sock = accept(socket_desc, (struct sockaddr *) &client, (socklen_t *) &c);
+	if (client_sock < 0)
+	{
+		printf("Error: accept");
+		return EXIT_FAILURE;
+	}
+
+	close(socket_desc);
+
+	return client_sock;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    int sockfd, connfd;
-    socklen_t client_addr_len;
-    struct sockaddr_in servaddr, cli;
+	int sockfd = 0;
+	char buffer[MESSAGE_SIZE];
+	int curr_size_to_send = 1;
+	size_t out_val = 0;
 
-    if (socket_setup(&sockfd, &servaddr, htonl(INADDR_LOOPBACK), PORT))
-    {
-        exit(EXIT_FAILURE);
-    }
 
-    if (bind_listen_accept(sockfd, &servaddr, &client_addr_len, &connfd, &cli))
-    {
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
+	sockfd = connectS();
+    if (sockfd == EXIT_FAILURE) {return EXIT_FAILURE;}
 
-    // Server is listening...
-    set_sockfd_opts(sockfd);
+	printf("Connected\n");
 
-    recv_send_msgs(connfd); // TODO benchmark
+	for (int j = 0; j <= EXP_LIMIT; j++)
+	{
+        int warmVal = warmUp(sockfd, buffer, curr_size_to_send, 0);
+        if (warmVal < 0) {
+				printf("Error: warmUp");
+				return EXIT_FAILURE;
+			}
 
-    close(sockfd);
 
-    return EXIT_SUCCESS;
+		for (int i = 0; i < MSG_AMOUNT; i++)
+		{
+
+			out_val = recive_data(sockfd, buffer, curr_size_to_send);
+
+			if (out_val < 0)
+			{
+				printf("Error: recive_data");
+				return EXIT_FAILURE;
+			}
+		}
+		out_val = send(sockfd, buffer, curr_size_to_send, 0);
+		if (out_val < 0)
+		{
+			printf("Error: send");
+			return EXIT_FAILURE;
+		}
+
+		curr_size_to_send *= 2;
+	}
+
+	close(sockfd);
+
+	return EXIT_SUCCESS;
 }

@@ -1,12 +1,13 @@
-#include <stdio.h>     // printf, perror
-#include <stdlib.h>    // EXIT_FAILURE, exit
-#include <string.h>    // memset, strncmp
-#include <unistd.h>    // write, read, close
-#include <arpa/inet.h> // connect, socket, htonl, htons, network MACROS
-#include "common.h"    // socket_setup, MACROS
-#include <time.h>      // clock, CLOCKS_PER_SEC
-#include <inttypes.h>  // PRIu64
-
+#include <stdio.h>
+#include<sys/time.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include "common.h"
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
 
 
 
@@ -16,7 +17,7 @@ struct timespec diff(struct timespec start, struct timespec end)
     struct timespec temp;
     if ((end.tv_nsec - start.tv_nsec) < 0) {
         temp.tv_sec = end.tv_sec-start.tv_sec -1;
-        temp.tv_nsec = 1000000000 + end.tv_nsec-start.tv_nsec;
+        temp.tv_nsec = BILLION + end.tv_nsec-start.tv_nsec;
     } else {
         temp.tv_sec = end.tv_sec-start.tv_sec ;
         temp.tv_nsec = end.tv_nsec-start.tv_nsec;
@@ -24,69 +25,114 @@ struct timespec diff(struct timespec start, struct timespec end)
     return temp;
 }
 
-void apply_benchmark(int sockfd)
+
+int connectC(char *argv[])
 {
-    // Timed send-receive loop
-    for (size_t j = 0; j < NUM_OF_BITS; j++)
+	int sockfd;
+	struct sockaddr_in server;
+
+	//Create socket
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd == -1)
+	{
+		printf("Error: socket\n");
+		return EXIT_FAILURE;
+	}
+
+	server.sin_addr.s_addr = inet_addr(argv[1]);
+	server.sin_family = AF_INET;
+	server.sin_port = htons(PORT);
+
+	if (connect(sockfd, (struct sockaddr *) &server, sizeof(server)) < 0)
+	{
+		perror("Error: connect");
+		return EXIT_FAILURE;
+	}
+
+	return sockfd;
+}
+
+size_t recive_data(int sockfd, char *buffer, int size)
+{
+
+size_t bytes_received = 0;
+size_t res = 0;
+while (bytes_received < size)
+{
+    res = recv(sockfd, buffer + bytes_received, size - bytes_received, 0);
+    if (res == 0)
     {
-        // Init buffers
-        uint64_t num_of_bytes_to_send = 1 << j;
-        uint8_t *rbuffer = malloc(num_of_bytes_to_send);
-        uint8_t *wbuffer = malloc(num_of_bytes_to_send);
+        printf("Error: recv\n");
+    }
+    else if (res < 0)
+    {
 
-        struct timespec start, end, res;
-
-        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
-
-      
-        for (size_t i = 0; i < N_ROUNDS; i++)
-        {
-            send_message(num_of_bytes_to_send, sockfd, wbuffer);
-        }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-       
-        res = diff(start,end);
-        receive_message(1, sockfd, rbuffer);
-
-
-        double send_time = ((double) res.tv_sec + ((double) res.tv_nsec / BILLION)) ; // in second
-        double throughput =( (N_ROUNDS * num_of_bytes_to_send) / send_time) / TRANS_MBPS; // Mbps
-
-        printf("%lu\t%f\t Mbps\n",num_of_bytes_to_send, throughput);
-        
-    
-        free(rbuffer);
-        free(wbuffer);
+        return res;
+    }
+    else
+    {
+        bytes_received += res;
     }
 }
 
-int main()
+return res;
+}
+
+
+int main(int argc, char *argv[])
 {
-    const char *server_host = "127.0.0.1";
+	int sockfd = 0;
+	char buffer[MESSAGE_SIZE];
+	int num_of_bytes_to_send = 1;  
+	size_t out_val = 0;
 
-    int sockfd;
-    struct sockaddr_in servaddr;
 
-    // set client's socket up
-    if (socket_setup(&sockfd, &servaddr, inet_addr(server_host), PORT))
-    {
-        exit(EXIT_FAILURE);
-    }
+	sockfd = connectC(argv);
 
-    // connect the client socket to server socket
-    if (connect(sockfd, (const SA *)&servaddr, sizeof(servaddr)))
-    {
-        perror("connect() failed with error no:\n");
+	if (sockfd == EXIT_FAILURE){return EXIT_FAILURE;}
 
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
+	printf("Connect!\n");
 
-    // connected to the server...
-    set_sockfd_opts(sockfd);
+	for (int j = 0; j <= EXP_LIMIT; j++)
+	{
+        int check = warmUp(sockfd, buffer, num_of_bytes_to_send, 1);
+        if (check < 0) {
+				printf("Error: warmUp");
+				return EXIT_FAILURE;
+			}
 
-    apply_benchmark(sockfd);
+		struct timespec start, end, res;
 
-    close(sockfd);
-    return EXIT_SUCCESS;
+		clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+
+		for (int i = 0; i < MSG_AMOUNT; i++)
+		{
+			out_val = send(sockfd, buffer, num_of_bytes_to_send, 0);
+			if (out_val < 0)
+			{
+				printf("Error: send");
+				return EXIT_FAILURE;
+			}
+		}
+		clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+
+		res = diff(start, end);
+
+		double send_time = (((double) res.tv_sec * BILLION + ((double) res.tv_nsec)) / MSG_AMOUNT) *1e-9; // in second's
+        double throughput =((double) (EIGHT * num_of_bytes_to_send) / (MB)) / send_time; // M'bps
+
+        printf("%d\t%f\t Mbps\n",num_of_bytes_to_send, throughput);
+		out_val = recive_data(sockfd, buffer, num_of_bytes_to_send);
+		if (out_val < 0)
+		{
+			printf("Error: recive_data");
+			return EXIT_FAILURE;
+		}
+
+		num_of_bytes_to_send *= 2;
+	}
+
+	close(sockfd);
+
+	return EXIT_SUCCESS;
 }
