@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 
 		struct timespec start, end, res;
 
-		clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 
 		for (int i = 0; i < MSG_AMOUNT; i++)
 		{
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 		}
-		clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 
 		res = diff(start, end);
 
